@@ -47,6 +47,18 @@ interface WeatehrData {
     temperature_2m: number[];
   };
 }
+const getSum = (arr: number[]) => arr.reduce((sum, num) => sum + num, 0);
+
+const getMovingAvrg = (arr: number[], entries: number) => {
+  return arr.reduce((acc, _, idx, arr) => {
+    if (idx > entries - 1) {
+      const range = arr.slice(idx - entries, idx);
+      acc.push(getSum(range) / entries);
+    }
+
+    return acc;
+  }, [] as number[]);
+};
 
 export default Vue.extend({
   name: "App",
