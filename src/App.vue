@@ -33,20 +33,25 @@
       </v-btn>
     </v-app-bar>
 
-    <v-main> </v-main>
+    <v-main>
+      <v-text-field
+        label="Moving avarage over days"
+        v-model="movingAvrgDays"
+        type="number"
+      ></v-text-field>
+
+      <ChartScatter :data="chartData" :layout="chartLayout" />
+    </v-main>
   </v-app>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
 
-interface WeatehrData {
-  hourly: {
-    precipitation: number[];
-    time: string[];
-    temperature_2m: number[];
-  };
-}
+import ChartScatter from "@/components/ChartScatter.vue";
+
+import { WeatehrData, ChartTrace } from "@/types";
+
 const getSum = (arr: number[]) => arr.reduce((sum, num) => sum + num, 0);
 
 const getMovingAvrg = (arr: number[], entries: number) => {
@@ -63,7 +68,7 @@ const getMovingAvrg = (arr: number[], entries: number) => {
 export default Vue.extend({
   name: "App",
 
-  components: {},
+  components: { ChartScatter },
 
   data: () => ({
     location: {
@@ -71,17 +76,59 @@ export default Vue.extend({
       long: 0.1276,
     },
     weatherData: {} as WeatehrData,
+    movingAvrgDays: 0,
   }),
 
   computed: {
     weatherApiUrl() {
       return `https://api.open-meteo.com/v1/forecast?latitude=${this.location.lat}&longitude=${this.location.long}&hourly=temperature_2m,precipitation`;
     },
+
+    chartData() {
+      const traces = [
+        {
+          name: "Temperature",
+          type: "scatter",
+          x: this.weatherData.time,
+          y: this.weatherData.temperature_2m,
+          mode: "lines",
+        },
+        {
+          name: "Precipitation",
+          type: "scatter",
+          x: this.weatherData.time,
+          y: this.weatherData.precipitation,
+          mode: "lines",
+        },
+      ] as ChartTrace[];
+
+      if (this.movingAvrgDays > 0) {
+        const movingAvrgHours = this.movingAvrgDays * 24;
+
+        traces.push({
+          name: "Tem. mov. avrg",
+          type: "scatter",
+          x: this.weatherData.time.slice(movingAvrgHours),
+          y: getMovingAvrg(this.weatherData.temperature_2m, movingAvrgHours),
+          mode: "lines",
+        });
+      }
+
+      return traces;
+    },
+
+    chartLayout() {
+      return {
+        layout: {
+          title: "historical and predicted temperature and precipitation",
+        },
+      };
+    },
   },
 
   methods: {
     async loadData() {
-      let data: WeatehrData;
+      let data: { hourly: WeatehrData };
 
       try {
         const response = await fetch(this.weatherApiUrl);
@@ -92,7 +139,7 @@ export default Vue.extend({
         );
       }
 
-      this.weatherData = data;
+      this.weatherData = data.hourly;
 
       console.log(this.weatherData);
     },
