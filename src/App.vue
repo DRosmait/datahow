@@ -40,11 +40,62 @@
 <script lang="ts">
 import Vue from "vue";
 
+interface WeatehrData {
+  hourly: {
+    precipitation: number[];
+    time: string[];
+    temperature_2m: number[];
+  };
+}
+
 export default Vue.extend({
   name: "App",
 
   components: {},
 
-  data: () => ({}),
+  data: () => ({
+    location: {
+      lat: 51.5072,
+      long: 0.1276,
+    },
+    weatherData: {} as WeatehrData,
+  }),
+
+  computed: {
+    weatherApiUrl() {
+      return `https://api.open-meteo.com/v1/forecast?latitude=${this.location.lat}&longitude=${this.location.long}&hourly=temperature_2m,precipitation`;
+    },
+  },
+
+  methods: {
+    async loadData() {
+      let data: WeatehrData;
+
+      try {
+        const response = await fetch(this.weatherApiUrl);
+        data = await response.json();
+      } catch (err) {
+        return console.error(
+          (err as Error).message || "Weather data cannot be loaded."
+        );
+      }
+
+      this.weatherData = data;
+
+      console.log(this.weatherData);
+    },
+  },
+
+  // Live cycle hoocks
+  created() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(({ coords }) => {
+        this.location.lat = coords.latitude;
+        this.location.long = coords.longitude;
+
+        this.$nextTick(() => this.loadData());
+      });
+    }
+  },
 });
 </script>
